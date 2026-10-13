@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⚡ Studio Gallery Ultra-Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#f43f5e' },
+                        darkBg: '#09090b',
+                        surface: '#121214'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Animaciones Pro */
+        .grid-item {
+            animation: mobileEntry 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        @keyframes mobileEntry {
+            from { opacity: 0; transform: translateY(8px) scale(0.99); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .spinning { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .lock-scroll { overflow: hidden !important; height: 100vh !important; }
+        
+        /* Animación Toast */
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .toast-animate { animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 font-sans min-h-screen antialiased selection:bg-brand-500">
+
+    <!-- CONTENEDOR DE TOASTS FLOTANTES -->
+    <div id="toastContainer" class="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+    <!-- HEADER PREMIUM -->
+    <header class="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-800/40 px-4 py-3.5">
+        <div class="max-w-7xl mx-auto flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
+            
+            <!-- Navegación Izquierda -->
+            <div class="flex items-center gap-4 min-w-0">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-brand-500 flex-shrink-0 drop-shadow-[0_0_10px_rgba(244,63,94,0.35)]">
+                        <i data-lucide="aperture" class="w-5 h-5"></i>
+                    </span>
+                    <h1 class="text-xs font-black tracking-widest text-zinc-400 font-mono uppercase hidden xs:block">Studio #40</h1>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <a href="./" class="flex items-center gap-1.5 px-3 py-2 bg-zinc-900/90 hover:bg-zinc-800/80 active:scale-95 rounded-xl border border-zinc-800/60 text-xs font-medium text-gray-300 transition-all">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-zinc-500"></i>
+                        <span>Inicio</span>
+                    </a>
+                    <a href="foto.html" class="flex items-center gap-1.5 px-3 py-2 bg-zinc-900/90 hover:bg-zinc-800/80 active:scale-95 rounded-xl border border-zinc-800/60 text-xs font-medium text-gray-300 transition-all">
+                        <i data-lucide="camera" class="w-3.5 h-3.5 text-zinc-500"></i>
+                        <span>Fotos</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- BARRA DE PROGRESO DE CUOTA (HASTA 1,000) -->
+            <div class="flex flex-col gap-1 w-full sm:w-64 bg-zinc-900/30 border border-zinc-800/40 rounded-xl p-2">
+                <div class="flex items-center justify-between text-[10px] font-mono tracking-tight px-0.5">
+                    <span class="text-zinc-400 uppercase">Progreso</span>
+                    <span class="text-zinc-300 font-bold"><span id="quotaCurrentText">0</span> / 1,000</span>
+                </div>
+                <div class="w-full h-1.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800/50 p-[1px]">
+                    <div id="quotaProgressBar" class="h-full bg-gradient-to-r from-brand-500 to-rose-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        
+        <!-- BARRA DE ACCIONES -->
+        <div class="flex items-center justify-between gap-4 mb-6 bg-zinc-900/20 p-2 rounded-2xl border border-zinc-800/30">
+            <div class="flex gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 text-sm w-full sm:w-auto">
+                <button onclick="filtrar(this, 'todos')" class="filter-btn flex-1 sm:flex-initial px-5 py-2.5 rounded-lg font-bold transition-all bg-brand-500 text-white shadow-md shadow-brand-500/10">
+                    Todas
+                </button>
+                <button onclick="filtrar(this, 'recientes')" class="filter-btn flex-1 sm:flex-initial px-5 py-2.5 rounded-lg font-bold transition-all text-zinc-400 hover:text-zinc-200">
+                    Recientes
+                </button>
+            </div>
+            
+            <button onclick="cargarFotos()" id="btnRecargar" class="p-3.5 bg-zinc-900/90 active:scale-90 rounded-xl border border-zinc-800 text-gray-200 transition-all flex-shrink-0 shadow-sm">
+                <i data-lucide="refresh-cw" class="w-4 h-4 btn-icon"></i>
+            </button>
+        </div>
+
+        <!-- APP STATES -->
+        <div id="loadingGaleria" class="hidden flex-col items-center justify-center py-32">
+            <i data-lucide="loader" class="w-8 h-8 text-brand-500 spinning mb-3"></i>
+            <p class="text-xs text-zinc-500 font-mono tracking-widest uppercase">Leyendo Base de Datos...</p>
+        </div>
+
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-32 text-center">
+            <i data-lucide="image-off" class="w-9 h-9 text-zinc-700 mb-3"></i>
+            <p class="text-sm text-zinc-400 font-medium">No se encontraron capturas asignadas.</p>
+        </div>
+
+        <div id="errorState" class="hidden flex-col items-center justify-center py-32 text-center">
+            <i data-lucide="wifi-off" class="w-9 h-9 text-brand-500 mb-3"></i>
+            <p class="text-sm text-zinc-300 mb-4">Error de enlace con el servidor remoto.</p>
+            <button onclick="cargarFotos()" class="px-5 py-2.5 bg-brand-500 font-bold text-xs rounded-xl shadow-lg active:scale-95 transition-all">Sincronizar Canal</button>
+        </div>
+
+        <!-- GRID DE IMÁGENES -->
+        <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+    </main>
+
+    <!-- VISOR LIGHTBOX -->
+    <div id="customLightbox" class="fixed inset-0 z-50 bg-black opacity-0 pointer-events-none transition-opacity duration-350 flex flex-col justify-between hidden select-none">
+        
+        <!-- Top Bar -->
+        <div class="w-full flex justify-between items-center px-4 py-4 bg-gradient-to-b from-black via-black/85 to-transparent z-10">
+            <div class="min-w-0 flex-1 pr-4">
+                <h4 id="lightboxTitle" class="font-bold text-sm text-gray-200 truncate font-mono">Visualizador</h4>
+                <p id="lightboxCounter" class="text-xs text-zinc-500 font-mono mt-0.5">0 / 0</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleFullscreen()" class="p-3 bg-zinc-900/90 active:bg-zinc-800 text-gray-300 rounded-xl border border-zinc-800/80 transition-all" title="Fullscreen">
+                    <i data-lucide="maximize" class="w-5 h-5" id="fsIcon"></i>
+                </button>
+                <button onclick="closeLightbox()" class="p-3 bg-zinc-900/90 active:bg-zinc-800 text-gray-300 rounded-xl border border-zinc-800/80 transition-all" title="Cerrar">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Área de visualización central -->
+        <div class="flex-1 w-full flex items-center justify-center p-3 relative min-h-0 bg-black">
+            <img id="lightboxImg" src="" alt="Preview" class="max-w-full max-h-[66vh] object-contain rounded-xl shadow-2xl transition-all duration-200 animate-[mobileEntry_0.25s_ease-out]">
+        </div>
+
+        <!-- Botonera de Control Inferior -->
+        <div class="w-full bg-gradient-to-t from-black via-black/95 to-transparent pt-6 pb-8 px-4 flex flex-col gap-4">
+            
+            <div class="flex items-center justify-between max-w-sm mx-auto w-full gap-3">
+                <button onclick="changeLightboxSlide(-1)" class="py-4 bg-zinc-900/90 active:bg-zinc-800 text-white rounded-2xl border border-zinc-800/80 flex-1 flex justify-center shadow-xl">
+                    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                </button>
+                
+                <!-- Botón descargar desde Lightbox -->
+                <button onclick="descargarDesdeLightbox()" class="py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/20 active:scale-95 transition-all px-5 flex justify-center shadow-lg" title="Descargar Imagen">
+                    <i data-lucide="download" class="w-6 h-6"></i>
+                </button>
+
+                <button onclick="eliminarDesdeLightbox()" class="py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl border border-red-500/20 active:scale-95 transition-all px-5 flex justify-center shadow-lg" title="Eliminar">
+                    <i data-lucide="trash-2" class="w-6 h-6"></i>
+                </button>
+
+                <button onclick="changeLightboxSlide(1)" class="py-4 bg-zinc-900/90 active:bg-zinc-800 text-white rounded-2xl border border-zinc-800/80 flex-1 flex justify-center shadow-xl">
+                    <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE SEGURIDAD -->
+    <div id="passwordModal" class="fixed inset-0 z-50 bg-black/96 backdrop-blur-xl flex items-center justify-center hidden opacity-0 transition-opacity duration-200 p-4 select-none">
+        <div class="bg-zinc-900 border border-zinc-800/80 p-6 rounded-2xl max-w-sm w-full shadow-[0_0_50px_rgba(0,0,0,0.8)] transform scale-95 transition-transform duration-200" id="passwordBox">
+            
+            <div class="flex items-center gap-3 text-brand-500 mb-3">
+                <div class="p-2.5 bg-brand-500/10 rounded-xl border border-brand-500/20">
+                    <i data-lucide="lock" class="w-5 h-5"></i>
+                </div>
+                <h3 class="text-sm font-black text-white uppercase tracking-widest font-mono">Acceso Restringido</h3>
+            </div>
+            
+            <p class="text-xs text-zinc-400 mb-5 leading-relaxed">Confirma las credenciales maestras del sistema para dar de baja este archivo permanentemente.</p>
+            
+            <input type="password" id="masterPasswordInput" placeholder="••••••••" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 text-base text-white focus:outline-none focus:border-brand-500 transition-all text-center tracking-widest mb-5 font-mono shadow-inner">
+            
+            <div class="flex gap-3 text-xs font-bold uppercase tracking-wider">
+                <button onclick="closePasswordModal()" class="flex-1 py-3.5 bg-zinc-800 hover:bg-zinc-750 rounded-xl text-zinc-300 active:scale-95 transition-all border border-zinc-700/40">Cancelar</button>
+                <button id="btnConfirmMasterPassword" class="flex-1 py-3.5 bg-brand-500 hover:bg-brand-600 rounded-xl text-white shadow-lg active:scale-95 transition-all">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT CORE INTEGRADO -->
+    <script>
+        const API_URL = 'https://ztart.mx/fotos';
+        const CLIENTE_ID = "54";
+        const CLAVE_ELIMINAR = "clave123";
+        const MAX_ABS_FOTOS = 1000;
+        
+        let fotosData = [];
+        let filtroActual = 'todos';
+        let currentLightboxIndex = 0;
+        let pendingDeleteId = null;
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-zinc-900/90 border-zinc-800 text-zinc-200';
+            let iconName = 'info';
+            let iconColor = 'text-blue-400';
+
+            if (type === 'success') {
+                bgClass = 'bg-emerald-950/90 border-emerald-800/60 text-emerald-200';
+                iconName = 'check-circle';
+                iconColor = 'text-emerald-400';
+            } else if (type === 'error') {
+                bgClass = 'bg-red-950/90 border-red-800/60 text-red-200';
+                iconName = 'shield-alert';
+                iconColor = 'text-red-400';
+            } else if (type === 'warning') {
+                bgClass = 'bg-amber-950/90 border-amber-800/60 text-amber-200';
+                iconName = 'alert-triangle';
+                iconColor = 'text-amber-400';
+            }
+
+            toast.className = `toast-animate flex items-center gap-3 px-4 py-3.5 rounded-xl border backdrop-blur-md shadow-xl ${bgClass} pointer-events-auto w-full`;
+            toast.innerHTML = `
+                <i data-lucide="${iconName}" class="w-5 h-5 ${iconColor} flex-shrink-0"></i>
+                <p class="text-xs font-medium leading-tight">${escapeHtml(message)}</p>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2', 'transition-all', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function setViewState(state) {
+            document.getElementById('loadingGaleria').style.display = state === 'loading' ? 'flex' : 'none';
+            document.getElementById('emptyState').style.display = state === 'empty' ? 'flex' : 'none';
+            document.getElementById('errorState').style.display = state === 'error' ? 'flex' : 'none';
+            document.getElementById('galleryGrid').style.display = state === 'ready' ? 'grid' : 'none';
+        }
+
+        async function cargarFotos() {
+            const btn = document.getElementById('btnRecargar');
+            if(btn) btn.querySelector('.btn-icon').classList.add('spinning');
+            setViewState('loading');
+
+            try {
+                const response = await fetch(`${API_URL}?cliente_id=${CLIENTE_ID}`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                    fotosData = data.data;
+                    procesarYRenderizar();
+                    actualizarBarraProgreso(data.data.length);
+                    setViewState('ready');
+                } else {
+                    setViewState('empty');
+                    actualizarBarraProgreso(0);
+                }
+            } catch (error) {
+                setViewState('error');
+                showToast('Fallo en sincronización. Revisa tu conexión.', 'error');
+            } finally {
+                if(btn) btn.querySelector('.btn-icon').classList.remove('spinning');
+            }
+        }
+
+        function procesarYRenderizar() {
+            let fotosMostrar = [...fotosData];
+            if (filtroActual === 'recientes') {
+                fotosMostrar.sort((a, b) => (b.id || 0) - (a.id || 0));
+            }
+            renderGrid(fotosMostrar);
+        }
+
+        function renderGrid(fotos) {
+            const grid = document.getElementById('galleryGrid');
+            grid.innerHTML = '';
+
+            fotos.forEach((foto, index) => {
+                const imgUrl = foto.name || foto.url || foto.src || '';
+                const fotoId = foto.id || index;
+                if (!imgUrl) return;
+
+                const card = document.createElement('div');
+                card.className = 'grid-item relative bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800/50 shadow-md active:scale-[0.98] transition-transform duration-200';
+                
+                card.innerHTML = `
+                    <div onclick="openLightbox(${index})" class="aspect-square w-full overflow-hidden bg-black relative cursor-pointer">
+                        <img src="${escapeHtml(imgUrl)}" loading="lazy" alt="Gallery item" class="w-full h-full object-cover" onerror="this.closest('.grid-item').remove()">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-90"></div>
+                    </div>
+                    <div class="absolute bottom-2 left-2 right-2 flex justify-end items-center gap-1.5 pointer-events-none">
+                        <button onclick="event.stopPropagation(); forzarDescarga('${escapeHtml(imgUrl)}', ${fotoId})" class="p-2 bg-zinc-900/90 text-emerald-400 rounded-xl pointer-events-auto border border-zinc-800/60 shadow-md active:scale-90 transition-transform" title="Descargar">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); requestDelete(${fotoId})" class="p-2 bg-brand-500 text-white rounded-xl pointer-events-auto shadow-md active:scale-90 transition-transform" title="Eliminar">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function openLightbox(index) {
+            currentLightboxIndex = index;
+            const lightbox = document.getElementById('customLightbox');
+            document.body.classList.add('lock-scroll');
+            
+            lightbox.classList.remove('hidden');
+            setTimeout(() => {
+                lightbox.classList.remove('opacity-0');
+                lightbox.classList.add('opacity-100');
+                lightbox.style.pointerEvents = 'auto';
+            }, 30);
+            
+            updateLightboxSlide();
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('customLightbox');
+            document.body.classList.remove('lock-scroll');
+            lightbox.classList.remove('opacity-100');
+            lightbox.classList.add('opacity-0');
+            lightbox.style.pointerEvents = 'none';
+            
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+            
+            setTimeout(() => lightbox.classList.add('hidden'), 250);
+        }
+
+        function changeLightboxSlide(direction) {
+            let targetFotos = [...fotosData];
+            if (filtroActual === 'recientes') targetFotos.sort((a, b) => (b.id || 0) - (a.id || 0));
+
+            currentLightboxIndex += direction;
+            if (currentLightboxIndex >= targetFotos.length) currentLightboxIndex = 0;
+            if (currentLightboxIndex < 0) currentLightboxIndex = targetFotos.length - 1;
+            
+            updateLightboxSlide();
+        }
+
+        function updateLightboxSlide() {
+            let targetFotos = [...fotosData];
+            if (filtroActual === 'recientes') targetFotos.sort((a, b) => (b.id || 0) - (a.id || 0));
+
+            const currentFoto = targetFotos[currentLightboxIndex];
+            if (!currentFoto) return;
+
+            const imgUrl = currentFoto.name || currentFoto.url || currentFoto.src || '';
+            document.getElementById('lightboxImg').src = imgUrl;
+
+            document.getElementById('lightboxTitle').textContent = `Visualizador Premium`;
+            document.getElementById('lightboxCounter').textContent = `${currentLightboxIndex + 1} / ${targetFotos.length}`;
+        }
+
+        function toggleFullscreen() {
+            const container = document.getElementById('customLightbox');
+            const icon = document.getElementById('fsIcon');
+
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().then(() => {
+                    icon.setAttribute('data-lucide', 'minimize');
+                    lucide.createIcons();
+                }).catch(() => showToast('Dispositivo no soporta Fullscreen nativo.', 'warning'));
+            } else {
+                document.exitFullscreen();
+                icon.setAttribute('data-lucide', 'maximize');
+                lucide.createIcons();
+            }
+        }
+
+        function descargarDesdeLightbox() {
+            let targetFotos = [...fotosData];
+            if (filtroActual === 'recientes') targetFotos.sort((a, b) => (b.id || 0) - (a.id || 0));
+            
+            const currentFoto = targetFotos[currentLightboxIndex];
+            if (currentFoto) {
+                const imgUrl = currentFoto.name || currentFoto.url || currentFoto.src || '';
+                const id = currentFoto.id || currentLightboxIndex;
+                forzarDescarga(imgUrl, id);
+            }
+        }
+
+        async function forzarDescarga(url, id) {
+            showToast('Procesando descarga de archivo...', 'info');
+            try {
+                const response = await fetch(url, { mode: 'cors' });
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = `studio-40-img-${id || Date.now()}.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(blobUrl);
+                showToast('Descarga iniciada.', 'success');
+            } catch (error) {
+                // Si falla CORS de origen cruzado, abre en pestaña nueva como alternativa
+                window.open(url, '_blank');
+                showToast('Descarga delegada al navegador web.', 'info');
+            }
+        }
+
+        function eliminarDesdeLightbox() {
+            let targetFotos = [...fotosData];
+            if (filtroActual === 'recientes') targetFotos.sort((a, b) => (b.id || 0) - (a.id || 0));
+            
+            const currentFoto = targetFotos[currentLightboxIndex];
+            if (currentFoto && currentFoto.id) {
+                closeLightbox();
+                requestDelete(currentFoto.id);
+            }
+        }
+
+        function requestDelete(id) {
+            pendingDeleteId = id;
+            const modal = document.getElementById('passwordModal');
+            const box = document.getElementById('passwordBox');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.classList.add('opacity-100');
+                box.classList.remove('scale-95');
+                box.classList.add('scale-100');
+            }, 30);
+
+            const input = document.getElementById('masterPasswordInput');
+            input.value = '';
+            setTimeout(() => input.focus(), 120);
+
+            document.getElementById('btnConfirmMasterPassword').onclick = ejecutarBorradoSeguro;
+        }
+
+        function closePasswordModal() {
+            const modal = document.getElementById('passwordModal');
+            const box = document.getElementById('passwordBox');
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+            box.classList.remove('scale-100');
+            box.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        async function ejecutarBorradoSeguro() {
+            const inputPass = document.getElementById('masterPasswordInput').value;
+            
+            if (inputPass !== CLAVE_ELIMINAR) {
+                showToast('Clave incorrecta. Autorización denegada.', 'error');
+                closePasswordModal();
+                return;
+            }
+
+            closePasswordModal();
+            setViewState('loading');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: pendingDeleteId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Imagen removida de la nube exitosamente.', 'success');
+                    cargarFotos();
+                } else {
+                    showToast(data.mensaje || 'El servidor denegó la operación.', 'warning');
+                    setViewState('ready');
+                }
+            } catch (error) {
+                showToast('Fallo crítico en la solicitud de borrado.', 'error');
+                setViewState('ready');
+            }
+        }
+
+        function filtrar(btn, tipo) {
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.className = "filter-btn flex-1 sm:flex-initial px-5 py-2.5 rounded-lg font-bold transition-all text-zinc-400 hover:text-zinc-200";
+            });
+            btn.className = "filter-btn flex-1 sm:flex-initial px-5 py-2.5 rounded-lg font-bold transition-all bg-brand-500 text-white shadow-md shadow-brand-500/10";
+            filtroActual = tipo;
+            if (fotosData.length > 0) procesarYRenderizar();
+        }
+
+        function actualizarBarraProgreso(total) {
+            const totalFotos = total || 0;
+            document.getElementById('quotaCurrentText').textContent = totalFotos;
+            
+            const porcentaje = Math.min((totalFotos / MAX_ABS_FOTOS) * 100, 100);
+            const progressBar = document.getElementById('quotaProgressBar');
+            
+            progressBar.style.width = `${porcentaje}%`;
+
+            if (porcentaje >= 90) {
+                progressBar.className = "h-full bg-gradient-to-r from-red-600 to-brand-500 rounded-full transition-all duration-500";
+                showToast(`Alerta: Cupo al ${porcentaje.toFixed(0)}% de la capacidad de red.`, 'warning');
+            } else {
+                progressBar.className = "h-full bg-gradient-to-r from-brand-500 to-rose-400 rounded-full transition-all duration-500";
+            }
+        }
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('customLightbox').classList.contains('hidden')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowRight') changeLightboxSlide(1);
+            if (e.key === 'ArrowLeft') changeLightboxSlide(-1);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            cargarFotos();
+        });
+    </script>
+</body>
+</html>

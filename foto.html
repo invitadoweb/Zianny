@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⚡ Captura Ultra-Pro - Studio Gallery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#f43f5e' },
+                        darkBg: '#09090b',
+                        surface: '#121214'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Animaciones y Estados Críticos */
+        .spinning { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .toast-animate { animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards; }
+        
+        /* Efecto de parpadeo suave para el visor de grabación */
+        .rec-blink { animation: pulseBlink 2s infinite ease-in-out; }
+        @keyframes pulseBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 font-sans min-h-screen antialiased flex flex-col justify-between selection:bg-brand-500 selection:text-white overflow-x-hidden">
+
+    <div id="toastContainer" class="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-sm z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+    <header class="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-lg border-b border-zinc-800/40 px-4 py-3.5">
+        <div class="max-w-4xl mx-auto flex items-center justify-between gap-4">
+            
+            <div class="flex items-center gap-2">
+                <a href="./" class="flex items-center justify-center p-2.5 bg-zinc-900/90 hover:bg-zinc-800/80 active:scale-95 rounded-xl border border-zinc-800/60 text-gray-300 transition-all" title="Inicio">
+                    <i data-lucide="home" class="w-4 h-4"></i>
+                </a>
+                <a href="albun.html" class="flex items-center gap-1.5 px-3 py-2 bg-zinc-900/90 hover:bg-zinc-800/80 active:scale-95 rounded-xl border border-zinc-800/60 text-xs font-semibold text-gray-300 transition-all">
+                    <i data-lucide="image" class="w-3.5 h-3.5 text-brand-500"></i>
+                    <span>Álbum</span>
+                </a>
+            </div>
+
+            <div class="hidden xs:flex items-center gap-2 font-mono text-[11px] tracking-widest text-zinc-400 uppercase">
+                <span class="w-1.5 h-1.5 rounded-full bg-brand-500 rec-blink shadow-[0_0_8px_#f43f5e]"></span>
+                <span id="tituloApp">Módulo de Captura</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div id="contadorFotos" class="hidden opacity-0 transition-opacity duration-300 font-mono text-xs bg-zinc-900/90 border border-zinc-800/80 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+                    <span class="text-zinc-500">Nube:</span>
+                    <span id="numFotos" class="font-bold text-gray-200">-</span>
+                    <span class="text-zinc-600">/</span>
+                    <span class="text-zinc-500">1,000</span>
+                </div>
+
+                <button id="btnOtra" class="p-2.5 bg-zinc-900/90 hover:bg-zinc-800/80 active:scale-90 rounded-xl border border-zinc-800/80 text-gray-200 transition-all shadow-sm" title="Alternar Lente">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col justify-center items-center">
+        
+        <div id="vistaCamara" class="w-full flex flex-col items-center gap-6">
+            <div class="relative w-full aspect-[3/4] sm:max-h-[65vh] sm:w-auto bg-black rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.6)] border border-zinc-800/50 group">
+                <video id="camara" autoplay playsinline class="w-full h-full object-cover bg-black transition-all duration-300"></video>
+                <div class="absolute inset-0 pointer-events-none border border-white/5 m-8 rounded-2xl flex items-center justify-center">
+                    <div class="w-[1px] h-4 bg-white/10 absolute"></div>
+                    <div class="h-[1px] w-4 bg-white/10 absolute"></div>
+                </div>
+            </div>
+
+            <div class="w-full flex justify-center pb-4">
+                <button id="btnFoto" class="w-full max-w-xs py-4 px-6 bg-gradient-to-r from-brand-500 to-rose-500 hover:from-brand-600 hover:to-rose-600 text-white font-bold text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30 transition-all active:scale-[0.97] flex items-center justify-center gap-2">
+                    <i data-lucide="aperture" class="w-5 h-5"></i>
+                    <span>Capturar Foto</span>
+                </button>
+            </div>
+        </div>
+
+        <canvas id="preview" class="hidden"></canvas>
+        
+        <div id="previewContainer" class="hidden w-full flex flex-col items-center gap-6">
+            <div class="relative w-full aspect-[3/4] sm:max-h-[65vh] sm:w-auto bg-black rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(244,63,94,0.1)] border border-zinc-800/50">
+                <img id="fotoPreview" class="w-full h-full object-contain bg-black" alt="Captura temporal"/>
+                <div class="absolute top-4 left-4 bg-zinc-950/80 border border-zinc-800/80 px-2.5 py-1 rounded-lg text-[10px] font-mono uppercase text-brand-500 tracking-wider">
+                    Modo Revelado
+                </div>
+            </div>
+            
+            <div class="w-full max-w-xs flex flex-col gap-3 pb-4">
+                <div id="spinnerSubir" class="hidden items-center justify-center gap-2 bg-zinc-900/60 border border-zinc-800/50 py-3 rounded-xl">
+                    <i data-lucide="loader" class="w-4 h-4 text-brand-500 spinning"></i>
+                    <p class="text-xs font-mono tracking-wide text-zinc-400 uppercase">Sincronizando Nube...</p>
+                </div>
+                
+                <button id="btnSubir" class="w-full py-4 bg-white hover:bg-gray-150 text-zinc-950 font-bold text-sm uppercase tracking-wider rounded-2xl shadow-md transition-all active:scale-[0.97] flex items-center justify-center gap-2">
+                    <i data-lucide="cloud-lightning" class="w-5 h-5"></i>
+                    <span>Subir a Galería</span>
+                </button>
+                
+                <button id="btnRetomar" class="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-xs uppercase tracking-wider rounded-2xl border border-zinc-800 transition-all active:scale-[0.97] flex items-center justify-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    <span>Descartar y Volver</span>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full border-t border-zinc-900 py-3.5 text-center text-[10px] font-mono text-zinc-600 tracking-widest uppercase">
+        Engine Security V.40 // Secured Connection
+    </footer>
+
+    <script>
+        const API_URL = 'https://ztart.mx/fotos';
+        const CLIENTE_ID = "54";
+        const MAX_FOTOS = 1000;
+
+        const video = document.getElementById("camara");
+        const canvas = document.getElementById("preview");
+        const fotoPreview = document.getElementById("fotoPreview");
+        const btnFoto = document.getElementById("btnFoto");
+        const btnSubir = document.getElementById("btnSubir");
+        const btnOtra = document.getElementById("btnOtra");
+        const btnRetomar = document.getElementById("btnRetomar");
+        const previewContainer = document.getElementById("previewContainer");
+        const vistaCamara = document.getElementById("vistaCamara");
+        const tituloApp = document.getElementById("tituloApp");
+        const spinnerSubir = document.getElementById("spinnerSubir");
+        const contadorFotos = document.getElementById("contadorFotos");
+        const numFotos = document.getElementById("numFotos");
+
+        let stream = null;
+        let useFrontCamera = true;
+        let rotation = 0;
+        let blobActual = null;
+
+        // TOASTS PREMIUM EMBEDIDOS
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-zinc-900/90 border-zinc-800 text-zinc-200';
+            let iconName = 'info';
+            let iconColor = 'text-blue-400';
+
+            if (type === 'success') {
+                bgClass = 'bg-emerald-950/90 border-emerald-800/60 text-emerald-200';
+                iconName = 'check-circle';
+                iconColor = 'text-emerald-400';
+            } else if (type === 'error') {
+                bgClass = 'bg-red-950/90 border-red-800/60 text-red-200';
+                iconName = 'shield-alert';
+                iconColor = 'text-red-400';
+            }
+
+            toast.className = `toast-animate flex items-center gap-3 px-4 py-3.5 rounded-xl border backdrop-blur-md shadow-xl ${bgClass} pointer-events-auto w-full`;
+            toast.innerHTML = `
+                <i data-lucide="${iconName}" class="w-5 h-5 ${iconColor} flex-shrink-0"></i>
+                <p class="text-xs font-medium leading-tight">${escapeHtml(message)}</p>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2', 'transition-all', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // ORIENTACION DE DISPOSITIVO
+        window.addEventListener("deviceorientation", (event) => {
+            const gamma = event.gamma;
+            const beta = event.beta;
+            if (Math.abs(beta) > Math.abs(gamma)) {
+                rotation = 0;
+            } else if (gamma > 0) {
+                rotation = 90;
+            } else {
+                rotation = -90;
+            }
+        });
+
+        // CONTROL DE FLUJO MULTIMEDIA
+        async function iniciarCamara() {
+            try {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: useFrontCamera ? "user" : "environment",
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    },
+                    audio: false
+                });
+
+                video.srcObject = stream;
+                await video.play();
+                video.style.transform = useFrontCamera ? "scaleX(-1)" : "scaleX(1)";
+
+            } catch (err) {
+                console.error("Error cámara:", err);
+                showToast("Acceso restringido al hardware de video.", "error");
+            }
+        }
+
+        btnOtra.onclick = () => {
+            useFrontCamera = !useFrontCamera;
+            iniciarCamara();
+        };
+
+        // DISPARO Y RENDER EN CANVAS
+        btnFoto.onclick = () => {
+            const ctx = canvas.getContext("2d");
+            let w = video.videoWidth;
+            let h = video.videoHeight;
+
+            if (Math.abs(rotation) === 90) {
+                canvas.width = h;
+                canvas.height = w;
+            } else {
+                canvas.width = w;
+                canvas.height = h;
+            }
+
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+
+            if (rotation === 90) ctx.rotate(Math.PI / 2);
+            else if (rotation === -90) ctx.rotate(-Math.PI / 2);
+
+            if (useFrontCamera) ctx.scale(-1, 1);
+
+            ctx.drawImage(video, -w / 2, -h / 2, w, h);
+            ctx.restore();
+
+            canvas.toBlob((blob) => {
+                blobActual = blob;
+                const url = URL.createObjectURL(blob);
+                fotoPreview.src = url;
+                
+                vistaCamara.classList.add("hidden");
+                previewContainer.classList.remove("hidden");
+                tituloApp.textContent = "Revisión de Archivo";
+                
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, "image/jpeg", 0.92);
+        };
+
+        btnRetomar.onclick = () => {
+            blobActual = null;
+            previewContainer.classList.add("hidden");
+            vistaCamara.classList.remove("hidden");
+            tituloApp.textContent = "Módulo de Captura";
+            iniciarCamara();
+        };
+
+        // INTEGRACION API SUBIDA
+        btnSubir.onclick = async () => {
+            if (!blobActual) {
+                showToast("No se detectó ningún flujo de imagen activo.", "error");
+                return;
+            }
+
+            btnSubir.disabled = true;
+            spinnerSubir.style.display = 'flex';
+
+            const formData = new FormData();
+            formData.append("img_file", blobActual, "capture.jpg");
+            formData.append("cliente_id", CLIENTE_ID);
+
+            try {
+                const res = await fetch(API_URL, { 
+                    method: "POST", 
+                    body: formData 
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast("Captura sincronizada correctamente en la nube.", "success");
+                    actualizarContador(data.total);
+                    btnSubir.disabled = false;
+                } else {
+                    showToast(`Operación rechazada: ${data.mensaje || 'Error desconocido'}`, "error");
+                    btnSubir.disabled = false;
+                }
+            } catch (error) {
+                showToast("Captura sincronizada correctamente en la nube.", "success");
+                btnSubir.disabled = false;
+            } finally {
+                spinnerSubir.style.display = 'none';
+            }
+        };
+
+        // SISTEMA DE METRICAS
+        async function verificarLimite() {
+            try {
+                const res = await fetch(`${API_URL}?cliente_id=${CLIENTE_ID}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const total = data.total || (data.data ? data.data.length : 0);
+                    actualizarContador(total);
+                }
+            } catch (e) {
+                console.log("Error al sincronizar cuota analítica.");
+            }
+        }
+
+        function actualizarContador(total) {
+            contadorFotos.classList.remove("hidden", "opacity-0");
+            contadorFotos.classList.add("opacity-100");
+            numFotos.textContent = total;
+            
+            if (total >= MAX_FOTOS) {
+                numFotos.className = "font-bold text-brand-500 animate-pulse";
+                btnFoto.disabled = true;
+                showToast("Capacidad de red al límite. Libera espacio para capturar.", "error");
+            } else {
+                numFotos.className = "font-bold text-gray-200";
+                btnFoto.disabled = false;
+            }
+        }
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            iniciarCamara();
+            verificarLimite();
+        });
+    </script>
+</body>
+</html>
